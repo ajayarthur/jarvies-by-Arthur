@@ -43,5 +43,8 @@ local.properties
 .DS_Store
 Thumbs.db
 desktop.ini
-
 **/.gradle/
+node_modules/
+**/node_modules/
+.expo/
+**/.expo/

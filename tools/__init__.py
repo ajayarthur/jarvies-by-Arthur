@@ -1,4 +1,23 @@
 # tools/__init__.py
+import sys
+from types import ModuleType
+
+# Graceful livekit agents fallback if package is not installed
+if "livekit" not in sys.modules:
+    try:
+        import livekit
+    except ImportError:
+        lk = ModuleType("livekit")
+        agents = ModuleType("livekit.agents")
+        def function_tool(func=None, **kwargs):
+            if func is not None:
+                return func
+            return lambda f: f
+        agents.function_tool = function_tool
+        lk.agents = agents
+        sys.modules["livekit"] = lk
+        sys.modules["livekit.agents"] = agents
+
 from .google_search import google_search_tool, get_current_datetime_tool
 from .weather import weather_tool
 from .system_control import (

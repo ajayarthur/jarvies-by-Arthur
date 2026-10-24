@@ -306,6 +306,27 @@ python agent.py console
 * 🔥 Personal calendar + reminders
 
 ---
+# 📱 **Android Mobile App & Companion System**
+
+Jarvies 4.0 now includes a dedicated native **Android Mobile Application** (`android_app/`) that connects securely with your local PC assistant.
+
+### 🌟 Mobile Features
+- **Holographic Arc Reactor HUD:** Animated pulsing core with live audio waveform visualizer.
+- **Microphone & Voice:** Tap-to-talk voice capture with Microsoft Edge Neural TTS audio playback.
+- **Device Pairing:** Secure 6-digit one-time pairing code with 256-bit encrypted Bearer tokens.
+- **Two-Phase Security Gate:** Confirmation modal prevents accidental high-impact actions (PC shutdown/restart).
+- **Tool Registry:** Live capability browser categorizing PC tools vs mobile native apps (WhatsApp, Spotify, YouTube deep linking).
+
+### 📚 Android & Architecture Documentation
+- 📖 [Architecture Audit](docs/ARCHITECTURE_AUDIT.md)
+- 📊 [Feature Compatibility Matrix](docs/FEATURE_COMPATIBILITY_MATRIX.md)
+- 🗺️ [Android Migration Plan](docs/ANDROID_MIGRATION_PLAN.md)
+- 🚀 [Android Setup & Connection Guide](docs/ANDROID_SETUP.md)
+- 📦 [Android Build & APK Installation Guide](docs/ANDROID_BUILD_AND_INSTALL.md)
+- 🔒 [Security Policy & Threat Model](docs/SECURITY.md)
+
+---
+
 # 🤝 **Contributing**
 
 Pull requests are welcome.
@@ -316,7 +337,7 @@ For major changes, open an issue first.
 
 Developed by: **Arthur**
 ---
-Powered by: Python, LiveKit, Gemini, Groq, Whisper, Edge TTS, Selenium, PyAutoGUI
+Powered by: Python, FastAPI, React Native/Expo, Gemini 3.5/3.8 Flash, Groq, Whisper, Edge TTS, PyAutoGUI
 
 ---
 

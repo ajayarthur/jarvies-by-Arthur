@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
-import mediapipe as mp
+try:
+    import mediapipe as mp
+except ImportError:
+    mp = None
 from pathlib import Path
 from livekit.agents import function_tool
 

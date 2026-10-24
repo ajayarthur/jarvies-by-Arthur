@@ -21,6 +21,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -33,6 +34,7 @@ from tools.groq_llm import groq_answer_tool
 from tools.weather import weather_tool
 from tools.brightness import brightness_tool
 from tools.state_manager import is_study_mode, set_study_mode, is_gate_mode, set_gate_mode
+import companion_security as sec
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
@@ -40,6 +42,15 @@ TTS_CACHE_DIR = PROJECT_ROOT / "tts_cache"
 TTS_CACHE_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Jarvies 4.0 - Advanced AI Desktop Assistant")
+
+# Enable CORS for mobile app connectivity across network
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
@@ -55,6 +66,16 @@ class ChatRequest(BaseModel):
 class ToolRequest(BaseModel):
     action: str
     param: str = ""
+
+
+class PairRequest(BaseModel):
+    pairing_code: str
+    device_name: str = "Android Device"
+
+
+class ConfirmRequest(BaseModel):
+    action_id: str
+    confirmed: bool
 
 
 def free_port_if_occupied(port: int = 7777):
@@ -104,8 +125,111 @@ async def serve_audio(filename: str):
     return JSONResponse(status_code=404, content={"error": "Audio file not found"})
 
 
+@app.get("/api/health")
+async def health_check():
+    """Health check for companion desktop service and network connectivity."""
+    return {
+        "status": "healthy",
+        "service": "Jarvis Companion Core",
+        "version": "4.0.0",
+        "platform": sys.platform,
+        "hostname": socket.gethostname(),
+        "pairing_required": True,
+        "paired_devices_count": len(sec.AUTHORIZED_TOKENS),
+        "uptime_seconds": round(time.time() - sec.SERVER_START_TIME, 1)
+    }
+
+
+@app.post("/api/auth/pair")
+async def pair_device(req: PairRequest, request: Request):
+    """
+    Pairs an Android device using the 6-digit one-time code shown in the PC console.
+    Returns an authorized Bearer token for subsequent requests.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    provided_code = req.pairing_code.strip()
+
+    if provided_code != sec.PAIRING_CODE:
+        sec.log_audit_event("PAIR_ATTEMPT", client_ip, False, f"Invalid code: {provided_code}")
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "error": "Invalid pairing code. Check PC console or dashboard."}
+        )
+
+    token = sec.generate_bearer_token()
+    sec.log_audit_event("PAIR_SUCCESS", client_ip, True, f"Device: {req.device_name}")
+
+    return {
+        "success": True,
+        "token": token,
+        "server_name": "Arthur's Jarvis Core",
+        "hostname": socket.gethostname(),
+        "message": f"Device '{req.device_name}' paired successfully with Jarvis!"
+    }
+
+
+@app.get("/api/capabilities")
+async def list_capabilities(request: Request):
+    """Returns the capability registry for the mobile app to index available features."""
+    return {
+        "success": True,
+        "capabilities": sec.CAPABILITY_REGISTRY,
+        "total": len(sec.CAPABILITY_REGISTRY)
+    }
+
+
+@app.post("/api/confirm_action")
+async def confirm_action_endpoint(req: ConfirmRequest, request: Request):
+    """
+    Second-phase execution protocol: Confirms and executes high-impact operations
+    (e.g. host PC shutdown, reboot) after mobile user authorization.
+    """
+    if not sec.is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized."})
+
+    client_ip = request.client.host if request.client else "unknown"
+    action_data = sec.resolve_pending_action(req.action_id)
+
+    if not action_data:
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "error": "Action expired or not found. Please request again."}
+        )
+
+    if not req.confirmed:
+        sec.log_audit_event("ACTION_CANCELLED", client_ip, True, f"Action: {action_data['action']}")
+        return {"success": True, "executed": False, "message": "Action was cancelled by user."}
+
+    action_type = action_data["action"]
+    param = action_data.get("param", "")
+    result = ""
+
+    try:
+        if action_type in ("system_shutdown", "shutdown"):
+            delay = int(param) if param.isdigit() else 30
+            result = await system_controller.system_shutdown(delay=delay)
+        elif action_type in ("system_restart", "restart"):
+            delay = int(param) if param.isdigit() else 30
+            result = await system_controller.system_restart(delay=delay)
+        else:
+            result = f"Unknown confirmed action: {action_type}"
+
+        sec.log_audit_event("ACTION_CONFIRMED", client_ip, True, f"Action: {action_type} - {result}")
+        return {"success": True, "executed": True, "result": result}
+    except Exception as e:
+        sec.log_audit_event("ACTION_ERROR", client_ip, False, f"Action: {action_type} - {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/cancel_action")
+async def cancel_action_endpoint(req: ConfirmRequest, request: Request):
+    """Explicitly cancels a pending high-impact action."""
+    sec.resolve_pending_action(req.action_id)
+    return {"success": True, "message": "Pending action cancelled."}
+
+
 @app.get("/api/system/stats")
-async def get_system_stats():
+async def get_system_stats(request: Request):
     try:
         cpu = psutil.cpu_percent(interval=0.1)
         mem = psutil.virtual_memory()
@@ -131,10 +255,36 @@ async def get_system_stats():
 
 
 @app.post("/api/execute_tool")
-async def execute_tool_endpoint(req: ToolRequest):
+async def execute_tool_endpoint(req: ToolRequest, request: Request):
+    if not sec.is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized device."})
+
     action = req.action.lower()
     param = req.param.strip()
     result = ""
+
+    # High-impact security check: Require mobile confirmation for shutdown/restart
+    if action in ("system_shutdown", "shutdown"):
+        aid = sec.create_pending_confirmation("system_shutdown", param or "30", "Host PC Shutdown (30s delay)")
+        return {
+            "success": True,
+            "requires_confirmation": True,
+            "pending_action_id": aid,
+            "action_type": "system_shutdown",
+            "action_description": "Are you sure you want to shut down the host PC?",
+            "result": "Confirmation required on mobile."
+        }
+
+    if action in ("system_restart", "restart"):
+        aid = sec.create_pending_confirmation("system_restart", param or "30", "Host PC Reboot (30s delay)")
+        return {
+            "success": True,
+            "requires_confirmation": True,
+            "pending_action_id": aid,
+            "action_type": "system_restart",
+            "action_description": "Are you sure you want to restart the host PC?",
+            "result": "Confirmation required on mobile."
+        }
 
     try:
         if action == "volume_up":
@@ -188,7 +338,10 @@ async def execute_tool_endpoint(req: ToolRequest):
 
 
 @app.post("/api/chat")
-async def chat_endpoint(req: ChatRequest):
+async def chat_endpoint(req: ChatRequest, request: Request):
+    if not sec.is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized device. Pair via /api/auth/pair."})
+
     user_text = req.message.strip()
     if not user_text:
         return {"reply": "Kuch toh boliye sir!", "audio_url": None, "tool_executed": None}
@@ -196,6 +349,33 @@ async def chat_endpoint(req: ChatRequest):
     lower_text = user_text.lower()
     tool_executed = None
     reply = ""
+
+    # High-impact voice instruction check: require confirmation
+    if ("shutdown" in lower_text or "shut down" in lower_text) and ("pc" in lower_text or "system" in lower_text or "computer" in lower_text or len(lower_text) < 15):
+        aid = sec.create_pending_confirmation("system_shutdown", "30", "Host PC Shutdown (30s delay)")
+        return {
+            "reply": "Sir, this will shut down your computer. Please confirm on your mobile screen.",
+            "audio_url": None,
+            "tool_executed": "system_shutdown",
+            "requires_confirmation": True,
+            "pending_action_id": aid,
+            "action_type": "system_shutdown",
+            "action_description": "Host PC Shutdown in 30 seconds",
+            "success": True
+        }
+
+    if ("restart" in lower_text or "reboot" in lower_text) and ("pc" in lower_text or "system" in lower_text or "computer" in lower_text or len(lower_text) < 15):
+        aid = sec.create_pending_confirmation("system_restart", "30", "Host PC Reboot (30s delay)")
+        return {
+            "reply": "Sir, this will reboot your computer. Please confirm on your mobile screen.",
+            "audio_url": None,
+            "tool_executed": "system_restart",
+            "requires_confirmation": True,
+            "pending_action_id": aid,
+            "action_type": "system_restart",
+            "action_description": "Host PC Reboot in 30 seconds",
+            "success": True
+        }
 
     # 1. DIRECT HARDWARE & COMMAND PARSER
     if "volume up" in lower_text or "aawaz badhao" in lower_text or "sound badhao" in lower_text:
@@ -284,7 +464,7 @@ async def chat_endpoint(req: ChatRequest):
             reply = str(res)
         else:
             prompt = (
-                "You are Jarvies, an advanced AI desktop assistant created by Arthur sir. "
+                "You are Jarvies, an advanced AI assistant created by Arthur sir. "
                 "Reply in natural Hinglish, short, witty, and smart (max 2-3 sentences).\n\n"
                 f"User: {user_text}\nJarvies:"
             )
@@ -341,14 +521,26 @@ def main():
     port = 7777
     free_port_if_occupied(port)
 
-    print("=" * 65)
-    print("      🚀 JARVIES 4.0 - HOLOGRAPHIC AI WEB DASHBOARD")
-    print("=" * 65)
-    print(f"[*] Local Dashboard:    http://127.0.0.1:{port}")
-    print(f"[*] Neural Voice Engine: Microsoft Edge Neural (Prabhat)")
-    print(f"[*] Multi-LLM Routing:   Gemini 2.5 Flash + Groq LLaMA")
-    print(f"[*] Hardware Spooler:    System Controls, Apps & Audio Visualizer")
-    print("=" * 65)
+    # Detect local IP address for easy mobile pairing
+    local_ip = "127.0.0.1"
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+
+    print("=" * 68)
+    print("      🚀 JARVIES 4.0 - AI DESKTOP ASSISTANT & MOBILE COMPANION")
+    print("=" * 68)
+    print(f"[*] Local PC Dashboard:   http://127.0.0.1:{port}")
+    print(f"[*] Android Mobile URL:   http://{local_ip}:{port}")
+    print(f"[*] Mobile Pairing Code:  {sec.PAIRING_CODE}")
+    print(f"[*] Neural Voice Engine:  Microsoft Edge Neural (Prabhat)")
+    print(f"[*] Multi-LLM Routing:    Gemini 3.5/3.8 Flash + Groq LLaMA")
+    print(f"[*] Security & Policy:    Two-Phase Confirmation Gate Active")
+    print("=" * 68)
 
     launch_cloudflare_tunnel(port)
     threading.Thread(target=open_browser, daemon=True).start()

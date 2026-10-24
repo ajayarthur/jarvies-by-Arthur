@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Jarvies AI",
+    "slug": "jarvies-ai",
+    "version": "4.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#060B19",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jarvies.ai",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Jarvis requires microphone access to listen to your voice commands and instructions.",
+        "NSSpeechRecognitionUsageDescription": "Jarvis transcribes your speech to execute actions."
+      }
+    },
+    "android": {
+      "package": "com.jarvies.ai",
+      "versionCode": 4,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#060B19"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    }
+  }
+}
