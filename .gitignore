@@ -1,0 +1,35 @@
+# Virtual Environment
+.venv/
+venv/
+jarvies_env/
+env/
+ENV/
+
+# Environment Secrets & API Keys
+.env
+.env.*
+*.env
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Audio & Media Cache
+tts_cache/
+*.wav
+*.mp3
+
+# Downloaded Binaries & Tools
+cloudflared.exe
+
+# OS & Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini

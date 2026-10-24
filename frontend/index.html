@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvies 4.0 — Holographic AI Desktop Assistant</title>
+  <meta name="description" content="Next-generation Iron Man inspired AI Desktop Assistant combining Edge Neural Voice, Voice Recognition, and System Control.">
+  
+  <!-- Google Fonts: Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons for HUD -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- Ambient Cyber Grid -->
+  <div class="cyber-grid"></div>
+
+  <!-- HUD Top Navigation Bar -->
+  <header class="hud-header">
+    <div class="brand-section">
+      <div class="brand-logo-glow" id="brandLogo">
+        <i class="fa-solid fa-atom text-white" style="font-size: 1.3rem;"></i>
+      </div>
+      <div>
+        <h1 class="brand-title">Jarvies 4.0</h1>
+        <p class="brand-subtitle">AI Desktop Assistant & Holographic HUD</p>
+      </div>
+    </div>
+
+    <div class="telemetry-badges">
+      <div class="hud-badge">
+        <span class="pulse-indicator"></span>
+        <span class="badge-label">CORE:</span>
+        <span class="badge-value" id="systemState">ONLINE</span>
+      </div>
+
+      <div class="hud-badge">
+        <i class="fa-solid fa-microchip badge-icon"></i>
+        <span class="badge-label">CPU:</span>
+        <span class="badge-value" id="cpuBadge">0%</span>
+      </div>
+
+      <div class="hud-badge">
+        <i class="fa-solid fa-memory badge-icon"></i>
+        <span class="badge-label">RAM:</span>
+        <span class="badge-value" id="ramBadge">0%</span>
+      </div>
+
+      <div class="hud-badge" id="batteryBadgeWrapper">
+        <i class="fa-solid fa-bolt badge-icon"></i>
+        <span class="badge-label">BATTERY:</span>
+        <span class="badge-value" id="batteryBadge">100%</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Master Content Grid -->
+  <main class="master-layout">
+    <!-- Left Column: Arc Reactor Core & Tool Deck -->
+    <section class="left-panel">
+      <!-- Arc Reactor Interactive Voice Orb -->
+      <div class="glass-card reactor-card">
+        <div class="reactor-wrapper" id="reactorWrapper" title="Click to Speak to Jarvies">
+          <div class="ring-outer"></div>
+          <div class="ring-mid"></div>
+          <div class="ring-inner"></div>
+          <div class="reactor-core" id="reactorCore">
+            <i class="fa-solid fa-microphone core-icon" id="reactorIcon"></i>
+          </div>
+        </div>
+
+        <h2 class="reactor-status-text" id="reactorStatusText">Jarvies Core Ready</h2>
+        <p class="reactor-subtext" id="reactorSubtext">Click the Arc Reactor or press the Mic button to talk</p>
+
+        <!-- Live Audio Waveform Canvas -->
+        <div class="visualizer-container">
+          <canvas id="audioVisualizer"></canvas>
+        </div>
+
+        <!-- Voice Settings Strip -->
+        <div class="voice-config-bar">
+          <div class="voice-select-group">
+            <i class="fa-solid fa-robot"></i>
+            <span>Voice:</span>
+            <select id="voiceSelector" class="hud-select">
+              <option value="en-IN-PrabhatNeural">Prabhat (Indian Neural - Default)</option>
+              <option value="hi-IN-MadhurNeural">Madhur (Hindi Male Neural)</option>
+              <option value="hi-IN-SwaraNeural">Swara (Hindi Female Neural)</option>
+              <option value="en-US-GuyNeural">Guy (US Neural)</option>
+            </select>
+          </div>
+
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); cursor: pointer;">
+            <input type="checkbox" id="speakerAudioToggle" style="accent-color: var(--cyan-glow);">
+            <span>System Speaker Sync</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Quick Action Hardware Deck -->
+      <div class="glass-card">
+        <h3 class="section-title"><i class="fa-solid fa-sliders"></i> System Control Hub</h3>
+        <div class="tools-grid">
+          <button class="tool-tile" id="toolVolumeUp" onclick="executeTool('volume_up')">
+            <i class="fa-solid fa-volume-high tile-icon"></i>
+            <span class="tile-name">Volume +</span>
+          </button>
+
+          <button class="tool-tile" id="toolVolumeDown" onclick="executeTool('volume_down')">
+            <i class="fa-solid fa-volume-low tile-icon"></i>
+            <span class="tile-name">Volume -</span>
+          </button>
+
+          <button class="tool-tile" id="toolVolumeMute" onclick="executeTool('volume_mute')">
+            <i class="fa-solid fa-volume-xmark tile-icon"></i>
+            <span class="tile-name">Mute</span>
+          </button>
+
+          <button class="tool-tile" id="toolScreenshot" onclick="executeTool('screenshot')">
+            <i class="fa-solid fa-camera tile-icon"></i>
+            <span class="tile-name">Screenshot</span>
+          </button>
+
+          <button class="tool-tile" id="toolBrightnessUp" onclick="executeTool('brightness_up')">
+            <i class="fa-solid fa-sun tile-icon"></i>
+            <span class="tile-name">Bright +</span>
+          </button>
+
+          <button class="tool-tile" id="toolBrightnessDown" onclick="executeTool('brightness_down')">
+            <i class="fa-regular fa-sun tile-icon"></i>
+            <span class="tile-name">Bright -</span>
+          </button>
+
+          <button class="tool-tile" id="toolStudyMode" onclick="executeTool('toggle_study_mode')">
+            <i class="fa-solid fa-book-open-reader tile-icon"></i>
+            <span class="tile-name">Study Mode</span>
+          </button>
+
+          <button class="tool-tile" id="toolGateMode" onclick="executeTool('toggle_gate_mode')">
+            <i class="fa-solid fa-graduation-cap tile-icon"></i>
+            <span class="tile-name">GATE Mode</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Application Quick Launcher Deck -->
+      <div class="glass-card">
+        <h3 class="section-title"><i class="fa-solid fa-rocket"></i> App Quick Launcher</h3>
+        <div class="tools-grid">
+          <button class="tool-tile" id="toolYouTube" onclick="executeTool('open_app', 'youtube')">
+            <i class="fa-brands fa-youtube tile-icon" style="color: #ff0033;"></i>
+            <span class="tile-name">YouTube</span>
+          </button>
+
+          <button class="tool-tile" id="toolSpotify" onclick="executeTool('open_app', 'spotify')">
+            <i class="fa-brands fa-spotify tile-icon" style="color: #1db954;"></i>
+            <span class="tile-name">Spotify</span>
+          </button>
+
+          <button class="tool-tile" id="toolWhatsApp" onclick="executeTool('open_app', 'whatsapp')">
+            <i class="fa-brands fa-whatsapp tile-icon" style="color: #25d366;"></i>
+            <span class="tile-name">WhatsApp</span>
+          </button>
+
+          <button class="tool-tile" id="toolGitHub" onclick="executeTool('open_app', 'github')">
+            <i class="fa-brands fa-github tile-icon"></i>
+            <span class="tile-name">GitHub</span>
+          </button>
+
+          <button class="tool-tile" id="toolLinkedIn" onclick="executeTool('open_app', 'linkedin')">
+            <i class="fa-brands fa-linkedin tile-icon" style="color: #0077b5;"></i>
+            <span class="tile-name">LinkedIn</span>
+          </button>
+
+          <button class="tool-tile" id="toolChatGPT" onclick="executeTool('open_app', 'chatgpt')">
+            <i class="fa-solid fa-brain tile-icon" style="color: #10a37f;"></i>
+            <span class="tile-name">ChatGPT</span>
+          </button>
+
+          <button class="tool-tile" id="toolCalc" onclick="executeTool('open_app', 'calc')">
+            <i class="fa-solid fa-calculator tile-icon"></i>
+            <span class="tile-name">Calculator</span>
+          </button>
+
+          <button class="tool-tile" id="toolNotepad" onclick="executeTool('open_app', 'notepad')">
+            <i class="fa-solid fa-file-pen tile-icon"></i>
+            <span class="tile-name">Notepad</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Holographic Terminal Chat Stream -->
+    <section class="right-panel">
+      <div class="chat-header">
+        <div class="chat-header-title">
+          <i class="fa-solid fa-terminal text-cyan-glow"></i>
+          <span>Live Holographic Console</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">
+          <i class="fa-solid fa-shield-halved" style="color: var(--neon-teal);"></i> SECURE HUD
+        </div>
+      </div>
+
+      <!-- Messages Stream -->
+      <div class="chat-messages" id="chatMessages">
+        <div class="message-bubble jarvis">
+          <div class="message-sender">
+            <i class="fa-solid fa-atom"></i> Jarvies Core
+          </div>
+          <div class="message-content">
+            Hello sir! Main hoon Jarvies 4.0. Main voice commands, system automation, apps control, volume, brightness aur AI conversation ke liye taiyar hoon. Aap muje bol kar ya type karke command de sakte hain!
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Suggestion Action Chips -->
+      <div class="quick-chips-wrapper" id="quickChips">
+        <button class="chip-btn" onclick="sendQuickPrompt('volume 70% kar do')">🔊 Volume 70%</button>
+        <button class="chip-btn" onclick="sendQuickPrompt('take screenshot')">📸 Screenshot</button>
+        <button class="chip-btn" onclick="sendQuickPrompt('system info batao')">💻 System Specs</button>
+        <button class="chip-btn" onclick="sendQuickPrompt('open youtube')">📺 Open YouTube</button>
+        <button class="chip-btn" onclick="sendQuickPrompt('study mode on karo')">📚 Study Mode</button>
+        <button class="chip-btn" onclick="sendQuickPrompt('gate mode on karo')">🎯 GATE Mode</button>
+      </div>
+
+      <!-- User Chat Input Bar -->
+      <div class="chat-input-bar">
+        <div class="input-container">
+          <input 
+            type="text" 
+            id="chatInput" 
+            class="chat-input" 
+            placeholder="Type your command or prompt here (e.g. 'open youtube', 'take screenshot')..."
+            autocomplete="off"
+          />
+          <button class="mic-btn-inside" id="micBtn" title="Speak to Jarvies (Voice Recognition)">
+            <i class="fa-solid fa-microphone"></i>
+          </button>
+        </div>
+        <button class="send-btn" id="sendBtn" title="Send Command">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Audio Element for Edge Neural Voice playback -->
+  <audio id="audioPlayer" preload="auto"></audio>
+
+  <!-- Toast Notification Popup -->
+  <div class="hud-toast" id="hudToast">Command executed</div>
+
+  <!-- Main Application Script -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

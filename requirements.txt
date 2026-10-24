@@ -1,0 +1,52 @@
+###############################################
+# CORE DEPENDENCIES (Jarvies, LLM, LiveKit)
+###############################################
+livekit-agents
+livekit-plugins-google
+livekit-plugins-noise-cancellation
+langchain-community
+python-dotenv
+requests
+
+###############################################
+# FILE SEARCH & FUZZY MATCH
+###############################################
+fuzzywuzzy
+python-Levenshtein
+
+###############################################
+# SYSTEM CONTROL / UI AUTOMATION
+###############################################
+pyautogui
+pynput
+psutil
+pygetwindow
+wmi; platform_system == "Windows"
+
+###############################################
+# FACE RECOGNITION (Unlock system)
+###############################################
+opencv-python
+face_recognition
+
+###############################################
+# GROQ LLM (Ultra Fast AI)
+###############################################
+groq
+
+###############################################
+# SPOTIFY CONTROLS
+###############################################
+spotipy
+
+###############################################
+# GMAIL AUTOMATION
+###############################################
+google-auth
+google-auth-oauthlib
+google-api-python-client
+
+###############################################
+# OPTIONAL: If you plan to use selenium for Instagram DM (future)
+# selenium
+###############################################
