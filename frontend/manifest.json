@@ -1,0 +1,37 @@
+{
+  "name": "Jarvies 4.0 — Holographic AI Assistant",
+  "short_name": "Jarvies",
+  "description": "Next-generation Iron Man inspired AI Assistant with Edge Neural Voice & Gemini LLM",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Voice Assistant",
+      "url": "/?mode=voice",
+      "description": "Start talking to Jarvies immediately"
+    },
+    {
+      "name": "GATE Mode",
+      "url": "/?mode=gate",
+      "description": "Activate GATE Exam Preparation Mode"
+    }
+  ]
+}

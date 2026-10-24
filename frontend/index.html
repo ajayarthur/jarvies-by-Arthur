@@ -2,9 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jarvies 4.0 — Holographic AI Desktop Assistant</title>
-  <meta name="description" content="Next-generation Iron Man inspired AI Desktop Assistant combining Edge Neural Voice, Voice Recognition, and System Control.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Jarvies 4.0 — Holographic AI Assistant</title>
+  <meta name="description" content="Next-generation Iron Man inspired AI Assistant combining Edge Neural Voice, Voice Recognition, and System Control.">
+  <meta name="theme-color" content="#030712">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- PWA Manifest & App Icons -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="/static/icons/favicon.png">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
   
   <!-- Google Fonts: Outfit & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -57,6 +66,15 @@
         <span class="badge-label">BATTERY:</span>
         <span class="badge-value" id="batteryBadge">100%</span>
       </div>
+
+      <button class="hud-badge install-btn" id="installPwaBtn" title="Install Jarvies as Android App" style="display: none; cursor: pointer; border-color: var(--neon-teal); background: rgba(0, 255, 210, 0.15); color: var(--neon-teal);">
+        <i class="fa-brands fa-android"></i>
+        <span style="font-weight: 700;">INSTALL APP</span>
+      </button>
+
+      <button class="hud-badge" id="serverSettingsBtn" title="Configure Jarvies Server URL" style="cursor: pointer;">
+        <i class="fa-solid fa-sliders"></i>
+      </button>
     </div>
   </header>
 
@@ -253,6 +271,27 @@
 
   <!-- Audio Element for Edge Neural Voice playback -->
   <audio id="audioPlayer" preload="auto"></audio>
+
+  <!-- Server Configuration Modal for Android & Remote Clients -->
+  <div class="hud-modal" id="serverSettingsModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <i class="fa-solid fa-server text-cyan-glow"></i>
+          <span style="font-weight: 700;">Jarvies Core Server URL</span>
+        </div>
+        <button class="modal-close-btn" id="closeServerModalBtn">&times;</button>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.6rem 0 1rem;">
+        Configure the backend URL when using Jarvies on your Android phone or outside your local Wi-Fi.
+      </p>
+      <input type="text" id="serverUrlInput" class="hud-input" placeholder="https://xyz.trycloudflare.com or http://192.168.1.10:7777" style="width: 100%; margin-bottom: 1rem; box-sizing: border-box;" />
+      <div style="display: flex; justify-content: flex-end; gap: 0.8rem;">
+        <button class="chip-btn" id="resetServerBtn">Default</button>
+        <button class="chip-btn" id="saveServerBtn" style="background: var(--cyan-glow); color: var(--bg-deep); font-weight: 700;">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Notification Popup -->
   <div class="hud-toast" id="hudToast">Command executed</div>

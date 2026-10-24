@@ -25,6 +25,14 @@ tts_cache/
 # Downloaded Binaries & Tools
 cloudflared.exe
 
+# Android Build Outputs
+android_app/build/
+android_app/*/build/
+.gradle/
+*.apk
+*.aab
+local.properties
+
 # OS & Editor Files
 .vscode/
 .idea/
@@ -33,3 +41,5 @@ cloudflared.exe
 .DS_Store
 Thumbs.db
 desktop.ini
+
+**/.gradle/

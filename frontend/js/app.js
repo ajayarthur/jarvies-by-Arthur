@@ -348,11 +348,94 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // ----------------------------------------------------
+  // HAPTIC FEEDBACK (Android Bridge + Web Vibration)
+  // ----------------------------------------------------
+  function triggerHaptic(duration = 35) {
+    if (window.AndroidJarvisBridge && window.AndroidJarvisBridge.vibrate) {
+      window.AndroidJarvisBridge.vibrate(duration);
+    } else if (navigator.vibrate) {
+      navigator.vibrate(duration);
+    }
+  }
+
+  // Hook haptics to clicks
+  if (reactorWrapper) reactorWrapper.addEventListener("click", () => triggerHaptic(40));
+  if (micBtn) micBtn.addEventListener("click", () => triggerHaptic(35));
+  if (sendBtn) sendBtn.addEventListener("click", () => triggerHaptic(25));
+
+  // ----------------------------------------------------
+  // PWA ANDROID INSTALL PROMPT
+  // ----------------------------------------------------
+  let deferredPrompt = null;
+  const installPwaBtn = document.getElementById("installPwaBtn");
+
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (installPwaBtn) {
+      installPwaBtn.style.display = "flex";
+      installPwaBtn.addEventListener("click", async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          if (outcome === "accepted") {
+            showToast("Jarvies installed successfully!");
+          }
+          deferredPrompt = null;
+          installPwaBtn.style.display = "none";
+        }
+      });
+    }
+  });
+
+  // ----------------------------------------------------
+  // SERVER CONFIGURATION MODAL (FOR ANDROID / REMOTE)
+  // ----------------------------------------------------
+  const serverSettingsBtn = document.getElementById("serverSettingsBtn");
+  const serverSettingsModal = document.getElementById("serverSettingsModal");
+  const closeServerModalBtn = document.getElementById("closeServerModalBtn");
+  const serverUrlInput = document.getElementById("serverUrlInput");
+  const saveServerBtn = document.getElementById("saveServerBtn");
+  const resetServerBtn = document.getElementById("resetServerBtn");
+
+  if (serverSettingsBtn && serverSettingsModal) {
+    serverSettingsBtn.addEventListener("click", () => {
+      triggerHaptic(20);
+      if (window.AndroidJarvisBridge && window.AndroidJarvisBridge.openServerSettings) {
+        window.AndroidJarvisBridge.openServerSettings();
+        return;
+      }
+      serverUrlInput.value = localStorage.getItem("jarvis_server_url") || window.location.origin;
+      serverSettingsModal.style.display = "flex";
+    });
+
+    closeServerModalBtn.addEventListener("click", () => {
+      serverSettingsModal.style.display = "none";
+    });
+
+    saveServerBtn.addEventListener("click", () => {
+      const val = serverUrlInput.value.trim().replace(/\/+$/, "");
+      if (val) {
+        localStorage.setItem("jarvis_server_url", val);
+        showToast("Server URL updated!");
+      }
+      serverSettingsModal.style.display = "none";
+    });
+
+    resetServerBtn.addEventListener("click", () => {
+      localStorage.removeItem("jarvis_server_url");
+      serverUrlInput.value = window.location.origin;
+      showToast("Reset to default server");
+    });
+  }
+
+  // ----------------------------------------------------
   // SYSTEM STATS POLLING (CPU, RAM, BATTERY)
   // ----------------------------------------------------
   async function updateTelemetry() {
     try {
-      const res = await fetch("/api/system/stats");
+      const baseUrl = localStorage.getItem("jarvis_server_url") || "";
+      const res = await fetch(`${baseUrl}/api/system/stats`);
       const stats = await res.json();
 
       if (stats.cpu_percent !== undefined) {
@@ -361,6 +444,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (stats.battery_percent !== null && stats.battery_percent !== undefined) {
           batteryBadge.textContent = `${stats.battery_percent}%${stats.battery_plugged ? ' ⚡' : ''}`;
+        } else if (window.AndroidJarvisBridge) {
+          // Native Android Battery API
+          const pct = window.AndroidJarvisBridge.getBatteryPercent();
+          const charging = window.AndroidJarvisBridge.isBatteryCharging();
+          batteryBadge.textContent = `${pct}%${charging ? ' ⚡' : ''}`;
         } else {
           document.getElementById("batteryBadgeWrapper").style.display = "none";
         }
@@ -379,4 +467,16 @@ document.addEventListener("DOMContentLoaded", () => {
   // Poll every 2.5 seconds
   setInterval(updateTelemetry, 2500);
   updateTelemetry();
+
+  // ----------------------------------------------------
+  // PWA SERVICE WORKER REGISTRATION
+  // ----------------------------------------------------
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js")
+        .then(() => console.log("[PWA] Service Worker registered"))
+        .catch((err) => console.warn("[PWA] Service Worker registration failed:", err));
+    });
+  }
 });
+

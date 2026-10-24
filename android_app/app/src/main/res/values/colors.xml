@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black_deep">#030712</color>
+    <color name="cyan_glow">#00f2fe</color>
+    <color name="blue_neon">#4facfe</color>
+    <color name="teal_neon">#00ffd2</color>
+    <color name="card_bg">#0d1628</color>
+</resources>

@@ -83,6 +83,19 @@ async def serve_index():
     return FileResponse(str(index_file))
 
 
+@app.get("/manifest.json")
+async def serve_manifest():
+    manifest_file = FRONTEND_DIR / "manifest.json"
+    return FileResponse(str(manifest_file), media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+async def serve_sw():
+    sw_file = FRONTEND_DIR / "sw.js"
+    return FileResponse(str(sw_file), media_type="application/javascript")
+
+
+
 @app.get("/api/audio/{filename}")
 async def serve_audio(filename: str):
     file_path = TTS_CACHE_DIR / filename
