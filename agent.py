@@ -70,7 +70,7 @@ from tools.keyboard_mouse_CTRL import (
 async def jarvies_startup_speak():
     try:
         await speak_text(
-            "I am Jarvies, created by my boss Himanshu.",
+            "I am Jarvies, created by my boss Arthur.",
             voice="en-IN-PrabhatNeural"
         )
     except:
@@ -82,7 +82,7 @@ async def jarvies_startup_speak():
 # --------------------------------------------------------
 async def jarvies_reply(user_text: str):
     prompt = (
-        "You are Jarvies created by Himanshu sir. "
+        "You are Jarvies created by Arthur sir. "
         "Reply in natural Hinglish, short and smart.\n\n"
         f"User: {user_text}\nJarvies:"
     )
@@ -105,7 +105,7 @@ class Jarvies(Agent):
     def __init__(self):
         super().__init__(
             instructions=(
-                "You are Jarvies created by Himanshu Sir. "
+                "You are Jarvies created by Arthur Sir. "
                 "Speak in Hinglish politely and smartly. "
                 "Use tools automatically whenever needed."
             ),

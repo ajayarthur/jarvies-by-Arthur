@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>Personal AI built by Himanshu | Voice + Automation + Tools + Local TTS</b>
+  <b>Personal AI built by Arthur | Voice + Automation + Tools + Local TTS</b>
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 
 # 🚀 **Jarvies 4.0 — Your Personal AI Desktop Assistant (Hinglish + Automation + Voice AI)**
 
-A next-generation AI desktop assistant designed and developed by **Himanshu Kumar**.
+A next-generation AI desktop assistant designed and developed by **Arthur**.
 Jarvies 4.0 combines **AI LLMs (Gemini, Groq)**, **voice automation**, **desktop control**, **social media actions**, **study/GATE modes**, and **system-level automation** — all in one powerful Python project.
 
 ---
@@ -156,7 +156,7 @@ Jarvies becomes your study partner:
 * Camera face recognition
 * Personalized greeting
 
-> “Welcome back Himanshu sir.”
+> “Welcome back Arthur sir.”
 
 ---
 
@@ -314,7 +314,7 @@ For major changes, open an issue first.
 
 # 🤝 **Credits**
 
-Developed by: **Himanshu Kumar**
+Developed by: **Arthur**
 ---
 Powered by: Python, LiveKit, Gemini, Groq, Whisper, Edge TTS, Selenium, PyAutoGUI
 

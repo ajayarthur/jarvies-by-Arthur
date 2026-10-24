@@ -9,6 +9,8 @@ ENV/
 .env
 .env.*
 *.env
+client_secret.json
+*token.json
 
 # Python bytecode & cache
 __pycache__/

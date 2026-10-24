@@ -10,7 +10,7 @@ from livekit.agents import function_tool
 
 class SocialMediaManager:
     def __init__(self):
-        self.user_name = "Himanshu sir"
+        self.user_name = "Arthur sir"
 
         # Register Chrome on Windows (fallback safe)
         if os.name == 'nt':

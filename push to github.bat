@@ -1,3 +1,3 @@
 @echo off
-cd /d "%~dp0\jarvies-4.0-main"
+cd /d "%~dp0"
 call "push_to_github.bat"
