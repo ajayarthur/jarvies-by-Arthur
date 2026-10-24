@@ -18,12 +18,13 @@ if sys.platform == "win32":
 
 import psutil
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+import voice_to_text
 
 load_dotenv()
 
@@ -33,6 +34,8 @@ from tools.google_llm import gemini_answer_tool
 from tools.groq_llm import groq_answer_tool
 from tools.weather import weather_tool
 from tools.brightness import brightness_tool
+from tools.google_search import google_search_tool, get_current_datetime_tool
+from tools.net_speed import net_status_tool
 from tools.state_manager import is_study_mode, set_study_mode, is_gate_mode, set_gate_mode
 import companion_security as sec
 
@@ -143,20 +146,19 @@ async def health_check():
 @app.post("/api/auth/pair")
 async def pair_device(req: PairRequest, request: Request):
     """
-    Pairs an Android device using the 6-digit one-time code shown in the PC console.
+    Pairs an Android device using the single-use expiring 6-digit code shown in the PC console.
     Returns an authorized Bearer token for subsequent requests.
     """
     client_ip = request.client.host if request.client else "unknown"
-    provided_code = req.pairing_code.strip()
+    token = sec.validate_and_consume_code(req.pairing_code, req.device_name)
 
-    if provided_code != sec.PAIRING_CODE:
-        sec.log_audit_event("PAIR_ATTEMPT", client_ip, False, f"Invalid code: {provided_code}")
+    if not token:
+        sec.log_audit_event("PAIR_ATTEMPT", client_ip, False, f"Invalid or expired code: {req.pairing_code}")
         return JSONResponse(
             status_code=401,
-            content={"success": False, "error": "Invalid pairing code. Check PC console or dashboard."}
+            content={"success": False, "error": "Invalid, expired, or already-used pairing code. Check PC console."}
         )
 
-    token = sec.generate_bearer_token()
     sec.log_audit_event("PAIR_SUCCESS", client_ip, True, f"Device: {req.device_name}")
 
     return {
@@ -166,6 +168,35 @@ async def pair_device(req: PairRequest, request: Request):
         "hostname": socket.gethostname(),
         "message": f"Device '{req.device_name}' paired successfully with Jarvis!"
     }
+
+
+@app.post("/api/voice/transcribe")
+async def transcribe_voice_endpoint(request: Request, file: UploadFile = File(...)):
+    """
+    Accepts recorded voice audio from Android mobile app and transcribes it to text.
+    """
+    if not sec.is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized device."})
+
+    try:
+        content = await file.read()
+        temp_wav = TTS_CACHE_DIR / f"upload_{int(time.time() * 1000)}.wav"
+        temp_wav.write_bytes(content)
+
+        transcribed_text = voice_to_text.transcribe_audio_file(str(temp_wav))
+
+        try:
+            temp_wav.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+        return {
+            "success": True,
+            "transcript": transcribed_text,
+            "language": "en-IN"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "transcript": ""}
 
 
 @app.get("/api/capabilities")
@@ -188,7 +219,8 @@ async def confirm_action_endpoint(req: ConfirmRequest, request: Request):
         return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized."})
 
     client_ip = request.client.host if request.client else "unknown"
-    action_data = sec.resolve_pending_action(req.action_id)
+    token = request.headers.get("Authorization", "") or request.headers.get("X-Jarvis-Token", "")
+    action_data = sec.resolve_pending_action(req.action_id, token)
 
     if not action_data:
         return JSONResponse(
@@ -224,7 +256,10 @@ async def confirm_action_endpoint(req: ConfirmRequest, request: Request):
 @app.post("/api/cancel_action")
 async def cancel_action_endpoint(req: ConfirmRequest, request: Request):
     """Explicitly cancels a pending high-impact action."""
-    sec.resolve_pending_action(req.action_id)
+    if not sec.is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized."})
+    token = request.headers.get("Authorization", "") or request.headers.get("X-Jarvis-Token", "")
+    sec.resolve_pending_action(req.action_id, token)
     return {"success": True, "message": "Pending action cancelled."}
 
 
@@ -262,10 +297,11 @@ async def execute_tool_endpoint(req: ToolRequest, request: Request):
     action = req.action.lower()
     param = req.param.strip()
     result = ""
+    token = request.headers.get("Authorization", "") or request.headers.get("X-Jarvis-Token", "")
 
     # High-impact security check: Require mobile confirmation for shutdown/restart
     if action in ("system_shutdown", "shutdown"):
-        aid = sec.create_pending_confirmation("system_shutdown", param or "30", "Host PC Shutdown (30s delay)")
+        aid = sec.create_pending_confirmation("system_shutdown", param or "30", "Host PC Shutdown (30s delay)", token)
         return {
             "success": True,
             "requires_confirmation": True,
@@ -276,7 +312,7 @@ async def execute_tool_endpoint(req: ToolRequest, request: Request):
         }
 
     if action in ("system_restart", "restart"):
-        aid = sec.create_pending_confirmation("system_restart", param or "30", "Host PC Reboot (30s delay)")
+        aid = sec.create_pending_confirmation("system_restart", param or "30", "Host PC Reboot (30s delay)", token)
         return {
             "success": True,
             "requires_confirmation": True,
@@ -307,6 +343,14 @@ async def execute_tool_endpoint(req: ToolRequest, request: Request):
             new_val = not is_gate_mode()
             set_gate_mode(new_val)
             result = f"GATE Mode set to {'ON' if new_val else 'OFF'}"
+        elif action == "weather":
+            result = await weather_tool(param)
+        elif action == "google_search":
+            result = await google_search_tool(param)
+        elif action in ("net_speed", "net_status"):
+            result = await net_status_tool()
+        elif action in ("datetime", "time"):
+            result = await get_current_datetime_tool()
         elif action == "open_app":
             app_map = {
                 "youtube": "https://youtube.com",
@@ -326,6 +370,10 @@ async def execute_tool_endpoint(req: ToolRequest, request: Request):
                 subprocess.Popen("notepad.exe", shell=True)
                 result = "Opened Notepad"
             else:
+                client_ip = request.client.host if request.client else "unknown"
+                if not sec.is_safe_command_param(param):
+                    sec.log_audit_event("INJECTION_BLOCKED", client_ip, False, f"Blocked parameter: {param[:30]}")
+                    return {"success": False, "error": "Security violation: Command parameter contains illegal shell characters."}
                 result = await system_controller.open_application(param)
         elif action == "system_info":
             result = await system_controller.get_system_info()
@@ -349,10 +397,11 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     lower_text = user_text.lower()
     tool_executed = None
     reply = ""
+    token = request.headers.get("Authorization", "") or request.headers.get("X-Jarvis-Token", "")
 
     # High-impact voice instruction check: require confirmation
     if ("shutdown" in lower_text or "shut down" in lower_text) and ("pc" in lower_text or "system" in lower_text or "computer" in lower_text or len(lower_text) < 15):
-        aid = sec.create_pending_confirmation("system_shutdown", "30", "Host PC Shutdown (30s delay)")
+        aid = sec.create_pending_confirmation("system_shutdown", "30", "Host PC Shutdown (30s delay)", token)
         return {
             "reply": "Sir, this will shut down your computer. Please confirm on your mobile screen.",
             "audio_url": None,
@@ -365,7 +414,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
         }
 
     if ("restart" in lower_text or "reboot" in lower_text) and ("pc" in lower_text or "system" in lower_text or "computer" in lower_text or len(lower_text) < 15):
-        aid = sec.create_pending_confirmation("system_restart", "30", "Host PC Reboot (30s delay)")
+        aid = sec.create_pending_confirmation("system_restart", "30", "Host PC Reboot (30s delay)", token)
         return {
             "reply": "Sir, this will reboot your computer. Please confirm on your mobile screen.",
             "audio_url": None,
@@ -453,6 +502,24 @@ async def chat_endpoint(req: ChatRequest, request: Request):
         tool_executed = "toggle_gate_mode"
         reply = f"GATE Mode ab {'ON' if new_val else 'OFF'} hai sir."
 
+    elif "weather" in lower_text or "mausam" in lower_text:
+        tool_executed = "weather"
+        city = ""
+        for word in ("weather in ", "weather of ", "mausam in "):
+            if word in lower_text:
+                city = lower_text.split(word, 1)[1].strip()
+                break
+        reply = await weather_tool(city)
+
+    elif "internet speed" in lower_text or "net speed" in lower_text or "wifi speed" in lower_text:
+        tool_executed = "net_status"
+        reply = await net_status_tool()
+
+    elif "what time" in lower_text or "current time" in lower_text or "kya time" in lower_text or "aaj kya date" in lower_text:
+        tool_executed = "datetime"
+        dt_str = await get_current_datetime_tool()
+        reply = f"Sir, abhi current date & time hai: {dt_str}"
+
     # 2. INTELLIGENT AI REASONING ROUTER
     if not reply:
         if is_gate_mode():
@@ -536,7 +603,7 @@ def main():
     print("=" * 68)
     print(f"[*] Local PC Dashboard:   http://127.0.0.1:{port}")
     print(f"[*] Android Mobile URL:   http://{local_ip}:{port}")
-    print(f"[*] Mobile Pairing Code:  {sec.PAIRING_CODE}")
+    print(f"[*] Mobile Pairing Code:  {sec.get_active_pairing_code()} (Valid for 15 min)")
     print(f"[*] Neural Voice Engine:  Microsoft Edge Neural (Prabhat)")
     print(f"[*] Multi-LLM Routing:    Gemini 3.5/3.8 Flash + Groq LLaMA")
     print(f"[*] Security & Policy:    Two-Phase Confirmation Gate Active")

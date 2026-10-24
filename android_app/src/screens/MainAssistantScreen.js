@@ -72,33 +72,34 @@ export function MainAssistantScreen({ onNavigateSettings, onNavigateCapabilities
       return;
     }
 
-    // Check mic permission
-    const hasPermission = await SpeechService.requestMicPermissions();
-    if (!hasPermission) {
-      Alert.alert(
-        "Microphone Permission Required",
-        "Jarvis needs access to your microphone to capture voice commands."
-      );
-      return;
-    }
-
     if (assistantState === "listening") {
-      // User tapped again to stop listening / submit
+      // User finished speaking: stop recording and transcribe!
       setAssistantState("processing");
-      if (transcript.trim()) {
-        await submitCommand(transcript);
+      setResponseMessage("Transcribing voice audio...");
+
+      const transcribed = await SpeechService.stopVoiceRecordingAndTranscribe();
+      if (transcribed && transcribed.trim()) {
+        setTranscript(transcribed);
+        await submitCommand(transcribed);
       } else {
         setAssistantState("idle");
+        setResponseMessage("No speech detected, sir. Please try speaking again.");
       }
     } else {
-      // Start listening mode
-      setAssistantState("listening");
-      setTranscript("");
-      setResponseMessage("Listening to you, sir...");
-      setLastExecutedTool(null);
-
-      // In managed mobile environment, prompt voice input or simulate rapid listening
-      // On real Android devices, native speech recognizer updates transcript
+      // Start recording voice input
+      const started = await SpeechService.startVoiceRecording();
+      if (started) {
+        setAssistantState("listening");
+        setTranscript("");
+        setResponseMessage("Listening to you, sir... Speak your command, then tap the Arc Reactor to execute.");
+        setLastExecutedTool(null);
+      } else {
+        Alert.alert(
+          "Microphone Permission Required",
+          "Jarvis needs access to your microphone to capture voice commands."
+        );
+        setAssistantState("idle");
+      }
     }
   };
 

@@ -30,7 +30,7 @@ jobs:
       - name: Install Mobile App Dependencies
         run: |
           cd android_app
-          npm install
+          npm install --legacy-peer-deps
 
       - name: Generate Native Android Project (Expo Prebuild)
         run: |
